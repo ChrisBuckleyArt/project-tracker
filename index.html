@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<meta name="apple-mobile-web-app-title" content="Project Tracker"/>
+<meta name="theme-color" content="#2563EB"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icon.svg"/>
+<title>Project Tracker</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f4f0;min-height:100vh;padding:1rem 1rem env(safe-area-inset-bottom)}
+.wrap{max-width:1300px;margin:0 auto}
+
+/* Setup screen */
+.setup-screen{display:none;position:fixed;inset:0;background:#f5f4f0;z-index:500;align-items:center;justify-content:center;padding:1.5rem}
+.setup-screen.open{display:flex}
+.setup-box{background:#fff;border-radius:18px;padding:2rem;width:100%;max-width:460px;box-shadow:0 8px 40px rgba(0,0,0,.12);border:0.5px solid #e5e7eb}
+.setup-box h1{font-size:22px;font-weight:600;color:#1a1a1a;margin-bottom:6px}
+.setup-box p{font-size:13px;color:#666;margin-bottom:1.5rem;line-height:1.5}
+.setup-step{margin-bottom:1.25rem}
+.setup-label{font-size:12px;font-weight:500;color:#444;margin-bottom:5px}
+.setup-input{width:100%;font-size:14px;padding:9px 12px;border-radius:9px;border:0.5px solid #ccc;background:#f9f9f7;color:#1a1a1a;font-family:inherit}
+.setup-input:focus{outline:none;border-color:#2563EB}
+.color-swatches{display:flex;gap:7px;flex-wrap:wrap;margin-top:5px}
+.swatch{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .1s}
+.swatch:hover{transform:scale(1.15)}
+.swatch.selected{border-color:#1a1a1a;transform:scale(1.15)}
+.cat-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;max-height:160px;overflow-y:auto}
+.cat-row{display:flex;align-items:center;gap:7px;font-size:13px;padding:5px 8px;background:#f5f4f0;border-radius:7px}
+.cat-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.cat-row-name{flex:1;color:#333}
+.cat-del{background:none;border:none;cursor:pointer;color:#aaa;font-size:14px;padding:0 2px}
+.cat-del:hover{color:#e11d48}
+.add-cat-row{display:flex;gap:7px;align-items:center}
+.add-cat-input{flex:1;font-size:13px;padding:7px 10px;border-radius:8px;border:0.5px solid #ccc;background:#f9f9f7;color:#1a1a1a;font-family:inherit}
+.add-cat-input:focus{outline:none;border-color:#2563EB}
+.add-cat-btn{font-size:12px;padding:7px 12px;border-radius:8px;border:0.5px solid #2563EB;background:#2563EB;color:#fff;cursor:pointer;white-space:nowrap}
+.setup-start{width:100%;font-size:14px;padding:11px;border-radius:10px;border:none;background:#2563EB;color:#fff;cursor:pointer;font-weight:500;margin-top:.5rem}
+.setup-start:hover{background:#1d4ed8}
+
+/* Top bar */
+.top-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:.85rem}
+.board-title{font-size:22px;font-weight:500;color:#1a1a1a;flex:1;min-width:160px;cursor:pointer}
+.board-title:hover .edit-hint{display:inline}
+.edit-hint{display:none;font-size:11px;color:#aaa;margin-left:6px}
+.top-actions{display:flex;gap:7px;flex-wrap:wrap}
+.tbtn{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:5px 12px;border-radius:99px;border:0.5px solid #ccc;background:#ebebeb;color:#333;cursor:pointer;white-space:nowrap}
+.tbtn:hover{background:#e0e0e0}
+.tbtn.active{background:#DBEAFE;color:#1e3a8a;border-color:#2563EB}
+
+/* Sync bar */
+.sync-bar{border-radius:10px;padding:9px 14px;margin-bottom:.75rem;display:flex;align-items:center;gap:10px;border:0.5px solid;flex-wrap:wrap;transition:all .3s}
+.sync-bar.loading{background:#DBEAFE;border-color:#2563EB;color:#1e3a8a}
+.sync-bar.ok{background:#DCFCE7;border-color:#16A34A;color:#14532D}
+.sync-bar.error{background:#FFF7ED;border-color:#EA580C;color:#7C2D12}
+.sync-bar.offline{background:#F1F5F9;border-color:#64748B;color:#334155}
+.sl{font-size:13px;font-weight:500;flex:1}
+.ss{font-size:11px;opacity:.85;margin-top:1px}
+
+/* Due banner */
+.due-banner{border-radius:10px;padding:10px 14px;margin-bottom:.75rem;display:flex;align-items:center;gap:10px;border:0.5px solid;flex-wrap:wrap}
+.due-banner.clear{background:#DCFCE7;border-color:#16A34A;color:#14532D}
+.due-banner.warn{background:#FEF9C3;border-color:#CA8A04;color:#713F12}
+.due-banner.danger{background:#FFE4E6;border-color:#E11D48;color:#881337}
+.blabel{font-size:13px;font-weight:500;flex:1}
+.bsub{font-size:11px;opacity:.85}
+
+/* Radar */
+.radar{margin-bottom:.75rem}
+.radar-title{font-size:12px;font-weight:500;color:#555;margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.radar-cards{display:flex;gap:7px;flex-wrap:wrap}
+.radar-pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:4px 10px;border-radius:99px;border:0.5px solid;cursor:pointer;font-weight:500}
+.radar-pill:hover{opacity:.8}
+
+/* Legend */
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:.75rem}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:11px;color:#555}
+.legend-dot{width:9px;height:9px;border-radius:50%}
+
+/* Columns */
+.columns{display:flex;gap:11px;overflow-x:auto;padding-bottom:1rem}
+.col{flex:1;min-width:175px;background:#ebebeb;border-radius:13px;padding:9px;border:0.5px solid #ddd}
+.col-header{display:flex;align-items:center;gap:6px;margin-bottom:9px;padding:0 2px}
+.col-icon{font-size:15px}
+.col-title{font-size:12px;font-weight:500;color:#222}
+.col-count{margin-left:auto;font-size:11px;padding:1px 6px;border-radius:99px;background:#fff;color:#555;border:0.5px solid #ccc}
+.cards{display:flex;flex-direction:column;gap:7px;min-height:48px}
+.card{border-radius:9px;padding:9px 10px;cursor:pointer;border:0.5px solid transparent;transition:transform .1s,box-shadow .1s;user-select:none}
+.card:hover{box-shadow:0 2px 8px rgba(0,0,0,.1);transform:translateY(-1px)}
+.card[draggable]:active{cursor:grabbing}
+.card.dragging{opacity:.5;transform:rotate(2deg) scale(1.04)}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:5px}
+.card-name{font-size:12px;font-weight:500;line-height:1.4}
+.priority-badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:99px;white-space:nowrap;flex-shrink:0}
+.card-note{font-size:10px;margin-top:4px;line-height:1.45;opacity:.82}
+.card-footer{display:flex;align-items:center;gap:5px;margin-top:5px;flex-wrap:wrap}
+.cat-tag{font-size:9px;padding:2px 5px;border-radius:99px;font-weight:500}
+.due-tag{display:inline-flex;align-items:center;gap:2px;font-size:9px;padding:2px 5px;border-radius:99px;font-weight:500}
+.drop-zone{border:1.5px dashed #bbb;border-radius:8px;height:36px;display:none;align-items:center;justify-content:center;font-size:10px;color:#aaa;margin-top:3px}
+.drop-zone.active{display:flex}
+.add-btn{width:100%;margin-top:6px;font-size:11px;padding:5px 0;background:none;border:0.5px dashed #bbb;border-radius:8px;color:#888;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:3px}
+.add-btn:hover{background:#fff}
+
+/* Overlays */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:200;align-items:center;justify-content:center;padding:1rem}
+.overlay.open{display:flex}
+.focus-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:300;align-items:center;justify-content:center;padding:1rem}
+.focus-overlay.open{display:flex}
+.modal{background:#fff;border-radius:14px;border:0.5px solid #ddd;padding:1.4rem;width:340px;max-width:100%;box-shadow:0 8px 32px rgba(0,0,0,.18);max-height:90vh;overflow-y:auto}
+.modal h3{font-size:15px;font-weight:500;margin-bottom:12px;color:#1a1a1a}
+.fl{font-size:11px;color:#666;margin-bottom:3px;margin-top:9px}
+.modal input,.modal select,.modal textarea{width:100%;font-size:13px;padding:8px 10px;border-radius:8px;border:0.5px solid #ccc;background:#f9f9f7;color:#1a1a1a;font-family:inherit;-webkit-appearance:none}
+.modal input:focus,.modal select:focus,.modal textarea:focus{outline:none;border-color:#2563EB}
+.modal textarea{resize:vertical;min-height:64px}
+.modal-btns{display:flex;gap:8px;justify-content:space-between;margin-top:14px}
+.modal-btns .right{display:flex;gap:8px}
+.mbtn{font-size:12px;padding:7px 14px;border-radius:8px;border:0.5px solid #ccc;cursor:pointer;background:#f0efeb;color:#333}
+.mbtn:hover{opacity:.85}
+.mbtn.primary{background:#2563EB;color:#fff;border-color:#2563EB}
+.mbtn.danger{background:#fff0f0;color:#a32d2d;border-color:#f09595}
+
+.install-banner{display:none;background:#1a1a1a;color:#fff;padding:10px 14px;border-radius:10px;margin-bottom:.75rem;font-size:12px;align-items:center;gap:10px;flex-wrap:wrap}
+.install-banner.show{display:flex}
+.ibtn{font-size:11px;padding:4px 10px;border-radius:99px;border:0.5px solid #fff;background:transparent;color:#fff;cursor:pointer}
+@media(max-width:600px){body{padding:.75rem .5rem env(safe-area-inset-bottom)}.board-title{font-size:18px}}
+</style>
+</head>
+<body>
+
+<!-- ── Setup Screen ───────────────────────────────── -->
+<div class="setup-screen" id="setup-screen">
+  <div class="setup-box">
+    <h1>👋 Welcome to Project Tracker</h1>
+    <p>Let's set up your board. You can change everything later.</p>
+
+    <div class="setup-step">
+      <div class="setup-label">What would you like to call your board?</div>
+      <input class="setup-input" id="setup-name" placeholder="e.g. My WIP, Ben's Task Board…" maxlength="40"/>
+    </div>
+
+    <div class="setup-step">
+      <div class="setup-label">Pick an accent colour for the title</div>
+      <div class="color-swatches" id="color-swatches"></div>
+    </div>
+
+    <div class="setup-step">
+      <div class="setup-label">Your categories <span style="color:#aaa;font-weight:400">(add as many as you like)</span></div>
+      <div class="cat-list" id="setup-cat-list"></div>
+      <div class="add-cat-row">
+        <div class="cat-dot" id="new-cat-dot" style="background:#2563EB;cursor:pointer" title="Click to change colour" onclick="cycleCatColor()"></div>
+        <input class="add-cat-input" id="new-cat-name" placeholder="Category name…" maxlength="30"/>
+        <button class="add-cat-btn" onclick="addSetupCat()">+ Add</button>
+      </div>
+    </div>
+
+    <button class="setup-start" onclick="finishSetup()">Create my board →</button>
+  </div>
+</div>
+
+<!-- ── Main Board ─────────────────────────────────── -->
+<div class="wrap" id="main-board" style="display:none">
+  <div class="install-banner" id="install-banner">
+    <i class="ti ti-device-mobile" aria-hidden="true"></i>
+    <strong style="flex:1">Install as an app on this device</strong>
+    <button class="ibtn" id="install-btn">Install</button>
+    <button class="ibtn" onclick="document.getElementById('install-banner').classList.remove('show')">✕</button>
+  </div>
+
+  <div class="top-bar">
+    <div class="board-title" id="board-title" onclick="renameBoardPrompt()">
+      Loading…<span class="edit-hint">✏️ rename</span>
+    </div>
+    <div class="top-actions">
+      <button class="tbtn" onclick="openFocus()"><i class="ti ti-target" aria-hidden="true"></i> Focus</button>
+      <button class="tbtn" id="radar-toggle" onclick="toggleRadar()"><i class="ti ti-radar" aria-hidden="true"></i> Radar</button>
+      <button class="tbtn" onclick="openSettings()"><i class="ti ti-settings" aria-hidden="true"></i> Settings</button>
+      <button class="tbtn" onclick="manualSync()"><i class="ti ti-refresh" aria-hidden="true"></i> Sync</button>
+    </div>
+  </div>
+
+  <div class="sync-bar loading" id="sync-bar">
+    <i class="ti ti-cloud" style="font-size:16px" aria-hidden="true"></i>
+    <div style="flex:1">
+      <div class="sl" id="sync-label">Connecting…</div>
+      <div class="ss" id="sync-sub">Setting up sync across your devices</div>
+    </div>
+  </div>
+
+  <div class="due-banner clear" id="due-banner">
+    <i class="ti ti-calendar-due" style="font-size:18px" aria-hidden="true"></i>
+    <div style="flex:1">
+      <div class="blabel" id="banner-label">No upcoming deadlines</div>
+      <div class="bsub" id="banner-sub">Add due dates to your cards to see alerts here.</div>
+    </div>
+  </div>
+
+  <div class="radar" id="radar-section" style="display:none">
+    <div class="radar-title"><i class="ti ti-radar" aria-hidden="true"></i> Deadline radar — tasks due within 14 days</div>
+    <div class="radar-cards" id="radar-cards"></div>
+  </div>
+
+  <div class="legend" id="legend"></div>
+  <div class="columns" id="columns"></div>
+</div>
+
+<!-- Focus overlay -->
+<div class="focus-overlay" id="focus-overlay">
+  <div class="modal" style="max-width:420px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h3 style="margin:0"><i class="ti ti-target" aria-hidden="true"></i> What matters most today</h3>
+      <button onclick="closeFocus()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#888;line-height:1" aria-label="Close">×</button>
+    </div>
+    <div id="focus-cards"></div>
+    <div style="font-size:11px;color:#888;margin-top:10px;text-align:center">Top Urgent &amp; High priority tasks · Tap any to edit</div>
+  </div>
+</div>
+
+<!-- Card modal -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3 id="modal-title">Task</h3>
+    <div class="fl">Task name</div>
+    <input type="text" id="f-name" placeholder="Task name"/>
+    <div class="fl">Category</div>
+    <select id="f-cat"></select>
+    <div class="fl">Priority</div>
+    <select id="f-priority">
+      <option value="none">— none —</option>
+      <option value="low">Low</option>
+      <option value="medium">Medium</option>
+      <option value="high">High</option>
+      <option value="urgent">Urgent</option>
+    </select>
+    <div class="fl">Due date (optional)</div>
+    <input type="date" id="f-due"/>
+    <div class="fl">Notes</div>
+    <textarea id="f-notes" placeholder="Add details, links, reminders…"></textarea>
+    <div class="modal-btns">
+      <button class="mbtn danger" id="delete-btn" onclick="deleteCard()">Delete</button>
+      <div class="right">
+        <button class="mbtn" onclick="closeModal()">Cancel</button>
+        <button class="mbtn primary" onclick="saveCard()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="overlay" id="settings-overlay">
+  <div class="modal">
+    <h3>⚙️ Settings</h3>
+    <div class="fl">Board name</div>
+    <input type="text" id="settings-name" placeholder="Board name"/>
+    <div class="fl">Accent colour</div>
+    <div class="color-swatches" id="settings-swatches" style="margin-top:4px"></div>
+    <div class="fl">Categories</div>
+    <div class="cat-list" id="settings-cat-list" style="margin-bottom:8px"></div>
+    <div class="add-cat-row">
+      <div class="cat-dot" id="settings-new-dot" style="background:#2563EB;cursor:pointer" onclick="cycleSettingsCatColor()"></div>
+      <input class="add-cat-input" id="settings-new-name" placeholder="New category…" maxlength="30"/>
+      <button class="add-cat-btn" onclick="addSettingsCat()">+ Add</button>
+    </div>
+    <div class="modal-btns" style="margin-top:14px">
+      <div></div>
+      <div class="right">
+        <button class="mbtn" onclick="closeSettings()">Cancel</button>
+        <button class="mbtn primary" onclick="saveSettings()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getDatabase, ref, onValue, set } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+// ── REPLACE THIS WITH YOUR FIREBASE CONFIG ────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyAWdgH53NDp-bZ7niwV52dvl7uU6VQuS1I",
+  authDomain: "project-tracker-77544.firebaseapp.com",
+  databaseURL: "https://project-tracker-77544-default-rtdb.firebaseio.com",
+  projectId: "project-tracker-77544",
+  storageBucket: "project-tracker-77544.firebasestorage.app",
+  messagingSenderId: "424422450539",
+  appId: "1:424422450539:web:4816017e8af4ca7855982e"
+};
+// ─────────────────────────────────────────────────────
+
+const COLS=[
+  {id:'todo',label:'To-do',icon:'ti-circle',color:'#888780'},
+  {id:'inprog',label:'In progress',icon:'ti-player-play',color:'#2563EB'},
+  {id:'waiting',label:'Waiting / blocked',icon:'ti-clock-pause',color:'#BA7517'},
+  {id:'recurring',label:'Recurring',icon:'ti-refresh',color:'#0F6E56'},
+  {id:'done',label:'Complete',icon:'ti-circle-check',color:'#3B6D11'},
+];
+
+const PRIO={
+  none:{label:null},
+  low:{label:'Low',bg:'#DCFCE7',text:'#14532D'},
+  medium:{label:'Medium',bg:'#FEF9C3',text:'#713F12'},
+  high:{label:'High',bg:'#FFEDD5',text:'#7C2D12'},
+  urgent:{label:'URGENT',bg:'#E11D48',text:'#fff'},
+};
+const PRIO_ORDER={urgent:0,high:1,medium:2,low:3,none:4};
+
+const PALETTE=[
+  '#2563EB','#7C3AED','#0F6E56','#BA7517','#E11D48',
+  '#0284C7','#16A34A','#EA580C','#64748B','#1a1a1a'
+];
+
+// State — all loaded from Firebase / localStorage
+let boardName='My Board';
+let accentColor='#2563EB';
+let categories=[]; // [{id, label, bg, text, dot, border}]
+let cards=[];
+let nextId=1;
+let editingId=null, addingCol=null, dragging=null, radarVisible=false;
+let db=null, dbRef=null, saveTimeout=null;
+
+// Setup state
+let setupCats=[];
+let newCatColorIndex=0;
+let settingsCats=[];
+let settingsNewColorIndex=0;
+
+// ── Setup screen ──────────────────────────────────────
+function renderSetupCats(){
+  const el=document.getElementById('setup-cat-list');
+  el.innerHTML=setupCats.map((c,i)=>`
+    <div class="cat-row">
+      <div class="cat-dot" style="background:${c.dot}"></div>
+      <div class="cat-row-name">${c.label}</div>
+      <button class="cat-del" onclick="removeSetupCat(${i})">✕</button>
+    </div>`).join('');
+}
+window.removeSetupCat=i=>{setupCats.splice(i,1);renderSetupCats();};
+window.addSetupCat=()=>{
+  const n=document.getElementById('new-cat-name').value.trim();
+  if(!n)return;
+  const color=PALETTE[newCatColorIndex%PALETTE.length];
+  setupCats.push(makeCat(Date.now(),n,color));
+  document.getElementById('new-cat-name').value='';
+  newCatColorIndex++;
+  document.getElementById('new-cat-dot').style.background=PALETTE[newCatColorIndex%PALETTE.length];
+  renderSetupCats();
+};
+window.cycleCatColor=()=>{
+  newCatColorIndex=(newCatColorIndex+1)%PALETTE.length;
+  document.getElementById('new-cat-dot').style.background=PALETTE[newCatColorIndex%PALETTE.length];
+};
+window.finishSetup=()=>{
+  const n=document.getElementById('setup-name').value.trim();
+  if(!n){document.getElementById('setup-name').focus();return;}
+  if(!setupCats.length){alert('Please add at least one category.');return;}
+  boardName=n;
+  categories=setupCats;
+  cards=[];nextId=1;
+  document.getElementById('setup-screen').classList.remove('open');
+  document.getElementById('main-board').style.display='';
+  applyAccent();
+  renderBoard();
+  save();
+  initFirebase();
+};
+
+// colour swatches for setup & settings
+function renderSwatches(containerId, selectedColor, onPick){
+  const el=document.getElementById(containerId);
+  el.innerHTML=PALETTE.map(c=>`<div class="swatch${c===selectedColor?' selected':''}" style="background:${c}" onclick="(${onPick.toString()})('${c}')"></div>`).join('');
+}
+
+// ── Settings ──────────────────────────────────────────
+window.openSettings=()=>{
+  document.getElementById('settings-name').value=boardName;
+  settingsCats=categories.map(c=>({...c}));
+  settingsNewColorIndex=0;
+  renderSettingsCats();
+  renderSwatches('settings-swatches', accentColor, c=>{
+    accentColor=c;
+    renderSwatches('settings-swatches',accentColor,c2=>{accentColor=c2;renderSwatches('settings-swatches',accentColor,()=>{});applyAccent();});
+    applyAccent();
+  });
+  document.getElementById('settings-overlay').classList.add('open');
+};
+function renderSettingsCats(){
+  const el=document.getElementById('settings-cat-list');
+  el.innerHTML=settingsCats.map((c,i)=>`
+    <div class="cat-row">
+      <div class="cat-dot" style="background:${c.dot}"></div>
+      <div class="cat-row-name">${c.label}</div>
+      <button class="cat-del" onclick="removeSettingsCat(${i})">✕</button>
+    </div>`).join('');
+}
+window.removeSettingsCat=i=>{settingsCats.splice(i,1);renderSettingsCats();};
+window.addSettingsCat=()=>{
+  const n=document.getElementById('settings-new-name').value.trim();if(!n)return;
+  const color=PALETTE[settingsNewColorIndex%PALETTE.length];
+  settingsCats.push(makeCat(Date.now(),n,color));
+  document.getElementById('settings-new-name').value='';
+  settingsNewColorIndex++;
+  document.getElementById('settings-new-dot').style.background=PALETTE[settingsNewColorIndex%PALETTE.length];
+  renderSettingsCats();
+};
+window.cycleSettingsCatColor=()=>{
+  settingsNewColorIndex=(settingsNewColorIndex+1)%PALETTE.length;
+  document.getElementById('settings-new-dot').style.background=PALETTE[settingsNewColorIndex%PALETTE.length];
+};
+window.saveSettings=()=>{
+  const n=document.getElementById('settings-name').value.trim();
+  if(!n)return;
+  boardName=n;
+  if(settingsCats.length)categories=settingsCats;
+  applyAccent();
+  renderBoard();
+  save();
+  closeSettings();
+};
+window.closeSettings=()=>document.getElementById('settings-overlay').classList.remove('open');
+window.renameBoardPrompt=()=>{
+  const n=prompt('Board name:',boardName);
+  if(n&&n.trim()){boardName=n.trim();applyAccent();renderBoard();save();}
+};
+
+function applyAccent(){
+  document.getElementById('board-title').innerHTML=`${boardName}<span class="edit-hint">✏️</span>`;
+  document.getElementById('board-title').style.color='#1a1a1a';
+  // Apply accent to title word — find last word
+  const parts=boardName.split(' ');
+  const last=parts.pop();
+  const rest=parts.join(' ');
+  document.getElementById('board-title').innerHTML=`${rest?rest+' ':''}<span style="color:${accentColor}">${last}</span><span class="edit-hint" style="font-size:11px;color:#aaa;margin-left:6px">✏️</span>`;
+  document.querySelector('meta[name="theme-color"]').setAttribute('content',accentColor);
+}
+
+// ── Firebase ──────────────────────────────────────────
+function initFirebase(){
+  try{
+    const app=initializeApp(firebaseConfig);
+    db=getDatabase(app);
+    // Use board name slug as the key so different boards don't collide
+    const slug=boardName.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-');
+    dbRef=ref(db,`project-tracker/${slug}`);
+    setSyncStatus('loading','Connecting…','');
+    onValue(dbRef,(snapshot)=>{
+      const data=snapshot.val();
+      if(data&&data.cards!==undefined){
+        cards=data.cards||[];
+        nextId=data.nextId||nextId;
+        boardName=data.boardName||boardName;
+        accentColor=data.accentColor||accentColor;
+        categories=data.categories||categories;
+        applyAccent();
+        renderBoard();
+        setSyncStatus('ok','Synced across all devices ✓','Changes update instantly everywhere');
+      } else {
+        pushToFirebase();
+      }
+    },(err)=>{console.error(err);fallbackLocal();});
+  }catch(e){console.error(e);fallbackLocal();}
+}
+
+function pushToFirebase(){
+  if(!db||!dbRef)return;
+  clearTimeout(saveTimeout);
+  saveTimeout=setTimeout(async()=>{
+    try{
+      await set(dbRef,{cards,nextId,boardName,accentColor,categories,updated:Date.now()});
+      setSyncStatus('ok','Saved & synced ✓','All your devices are up to date');
+    }catch(e){saveLocal();}
+  },600);
+}
+
+function save(){pushToFirebase();saveLocal();}
+function saveLocal(){
+  try{localStorage.setItem('pt_v1',JSON.stringify({cards,nextId,boardName,accentColor,categories}));}catch(e){}
+}
+function loadLocal(){
+  try{
+    const s=localStorage.getItem('pt_v1');
+    if(s){const d=JSON.parse(s);cards=d.cards||[];nextId=d.nextId||1;boardName=d.boardName||boardName;accentColor=d.accentColor||accentColor;categories=d.categories||[];return true;}
+  }catch(e){}
+  return false;
+}
+function fallbackLocal(){
+  loadLocal();
+  setSyncStatus('offline','Offline — saved locally','Sync will resume when you\'re back online');
+  renderBoard();
+}
+function setSyncStatus(state,label,sub){
+  const bar=document.getElementById('sync-bar');
+  const icons={loading:'ti-cloud',ok:'ti-cloud-check',error:'ti-cloud-x',offline:'ti-cloud-off'};
+  bar.className='sync-bar '+state;
+  bar.querySelector('i').className=`ti ${icons[state]||'ti-cloud'}`;
+  document.getElementById('sync-label').textContent=label;
+  document.getElementById('sync-sub').textContent=sub;
+}
+window.manualSync=()=>{setSyncStatus('loading','Syncing…','');setTimeout(()=>setSyncStatus('ok','Synced ✓','All devices are up to date'),1500);};
+
+// ── Category helpers ──────────────────────────────────
+function makeCat(id,label,dot){
+  // Generate light bg from dot color
+  return{id:String(id),label,dot,
+    bg:dot+'18',
+    text:dot,
+    border:dot+'44'
+  };
+}
+function getCat(id){return categories.find(c=>c.id===id)||categories[0]||{label:'General',bg:'#f1f5f9',text:'#334155',dot:'#64748B',border:'#64748B44'};}
+function buildCatSelect(){
+  const sel=document.getElementById('f-cat');
+  sel.innerHTML=categories.map(c=>`<option value="${c.id}">${c.label}</option>`).join('');
+}
+
+// ── Helpers ───────────────────────────────────────────
+function daysUntil(ds){
+  if(!ds)return null;
+  const now=new Date();now.setHours(0,0,0,0);
+  return Math.round((new Date(ds+'T00:00:00')-now)/86400000);
+}
+function updateDueBanner(){
+  const banner=document.getElementById('due-banner');
+  const label=document.getElementById('banner-label');
+  const sub=document.getElementById('banner-sub');
+  const active=cards.filter(c=>c.due&&c.col!=='done').map(c=>({...c,d:daysUntil(c.due)})).sort((a,b)=>a.d-b.d);
+  const overdue=active.filter(c=>c.d<0);
+  const today=active.filter(c=>c.d===0);
+  const soon=active.filter(c=>c.d>0&&c.d<=7);
+  banner.className='due-banner';
+  if(overdue.length){banner.classList.add('danger');label.textContent=`🚨 ${overdue.length} task${overdue.length>1?'s':''} overdue: ${overdue.map(c=>c.name).join(', ')}`;sub.textContent='These are past their due date!';}
+  else if(today.length){banner.classList.add('danger');label.textContent=`⏰ Due today: ${today.map(c=>c.name).join(', ')}`;sub.textContent='Make time for these today!';}
+  else if(soon.length){banner.classList.add('warn');label.textContent=`📅 Due this week: ${soon.map(c=>c.name).join(', ')}`;sub.textContent='Deadlines are coming up.';}
+  else{banner.classList.add('clear');label.textContent='All clear — no deadlines in the next 7 days';sub.textContent='Add due dates to your cards to see alerts here.';}
+}
+window.toggleRadar=()=>{
+  radarVisible=!radarVisible;
+  document.getElementById('radar-section').style.display=radarVisible?'block':'none';
+  document.getElementById('radar-toggle').classList.toggle('active',radarVisible);
+  if(radarVisible)renderRadar();
+};
+function renderRadar(){
+  const rc=document.getElementById('radar-cards');
+  const rel=cards.filter(c=>c.due&&c.col!=='done').map(c=>({...c,d:daysUntil(c.due)})).filter(c=>c.d<=14).sort((a,b)=>a.d-b.d);
+  if(!rel.length){rc.innerHTML='<span style="font-size:12px;color:#888">No deadlines in the next 14 days.</span>';return;}
+  rc.innerHTML=rel.map(c=>{
+    const d=c.d;let bg,text;
+    if(d<0){bg='#FFE4E6';text='#881337';}else if(d===0){bg='#FFE4E6';text='#881337';}else if(d<=3){bg='#FAC775';text='#412402';}else if(d<=7){bg='#FEF9C3';text='#713F12';}else{bg='#DCFCE7';text='#14532D';}
+    const dl=d<0?`${Math.abs(d)}d OVERDUE`:d===0?'Due TODAY':`${d}d left`;
+    return`<span class="radar-pill" style="background:${bg};color:${text};border-color:${text}44" onclick="openEdit(${c.id})"><i class="ti ti-clock" style="font-size:10px"></i> ${c.name} — ${dl}</span>`;
+  }).join('');
+}
+window.openFocus=()=>{
+  const top=cards.filter(c=>c.col!=='done'&&(c.priority==='urgent'||c.priority==='high')).sort((a,b)=>(PRIO_ORDER[a.priority]||4)-(PRIO_ORDER[b.priority]||4)).slice(0,5);
+  const fc=document.getElementById('focus-cards');
+  if(!top.length){fc.innerHTML='<p style="font-size:13px;color:#888">No urgent or high priority tasks right now!</p>';}
+  else fc.innerHTML=top.map(c=>{
+    const cat=getCat(c.cat);const prio=PRIO[c.priority];
+    const due=c.due?` · Due in ${daysUntil(c.due)}d`:'';
+    return`<div style="border-radius:9px;padding:10px 12px;margin-bottom:8px;background:${cat.bg};border:0.5px solid ${cat.border};cursor:pointer" onclick="closeFocus();openEdit(${c.id})">
+      <div style="display:flex;align-items:center;gap:7px">
+        <div style="font-size:13px;font-weight:500;color:${cat.text};flex:1">${c.name}</div>
+        ${prio.label?`<span class="priority-badge" style="background:${prio.bg};color:${prio.text}">${prio.label}</span>`:''}
+      </div>
+      <div style="font-size:11px;color:${cat.text};margin-top:3px;opacity:.82">${cat.label}${due}${c.notes?' · '+c.notes.slice(0,55)+(c.notes.length>55?'…':''):''}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('focus-overlay').classList.add('open');
+};
+window.closeFocus=()=>document.getElementById('focus-overlay').classList.remove('open');
+
+function dueTag(ds){
+  if(!ds)return'';const d=daysUntil(ds);let bg,text,icon,label;
+  if(d<0){bg='#FFE4E6';text='#881337';icon='ti-alert-triangle';label=`${Math.abs(d)}d overdue`;}
+  else if(d===0){bg='#FFE4E6';text='#881337';icon='ti-alarm';label='Due today';}
+  else if(d<=3){bg='#FAC775';text='#412402';icon='ti-alarm';label=`${d}d left`;}
+  else if(d<=7){bg='#FEF9C3';text='#713F12';icon='ti-calendar';label=`${d}d left`;}
+  else{bg='#DCFCE7';text='#14532D';icon='ti-calendar';label=`${d}d left`;}
+  return`<span class="due-tag" style="background:${bg};color:${text}"><i class="ti ${icon}" style="font-size:9px"></i> ${label}</span>`;
+}
+
+// ── Render ────────────────────────────────────────────
+function renderBoard(){
+  applyAccent();
+  buildCatSelect();
+  document.getElementById('legend').innerHTML=categories.map(c=>`<div class="legend-item"><div class="legend-dot" style="background:${c.dot}"></div>${c.label}</div>`).join('');
+  const colsEl=document.getElementById('columns');colsEl.innerHTML='';
+  COLS.forEach(col=>{
+    const colCards=cards.filter(c=>c.col===col.id);
+    const div=document.createElement('div');div.className='col';
+    div.innerHTML=`
+      <div class="col-header">
+        <i class="ti ${col.icon} col-icon" style="color:${col.color}"></i>
+        <span class="col-title">${col.label}</span>
+        <span class="col-count">${colCards.length}</span>
+      </div>
+      <div class="cards" id="cards-${col.id}"></div>
+      <div class="drop-zone" id="dz-${col.id}"><i class="ti ti-arrow-down"></i> drop here</div>
+      <button class="add-btn" onclick="openAdd('${col.id}')"><i class="ti ti-plus"></i> Add task</button>
+    `;
+    colsEl.appendChild(div);
+    const cardsEl=div.querySelector(`#cards-${col.id}`);
+    colCards.forEach(card=>{
+      const cat=getCat(card.cat);const prio=PRIO[card.priority||'none'];
+      const el=document.createElement('div');el.className='card';el.draggable=true;el.dataset.id=card.id;
+      el.style.background=cat.bg;el.style.borderColor=cat.border;
+      el.innerHTML=`
+        <div class="card-top">
+          <div class="card-name" style="color:${cat.text}">${card.name}</div>
+          ${prio.label?`<span class="priority-badge" style="background:${prio.bg};color:${prio.text}">${prio.label}</span>`:''}
+        </div>
+        ${card.notes?`<div class="card-note" style="color:${cat.text}">${card.notes.slice(0,70)}${card.notes.length>70?'…':''}</div>`:''}
+        <div class="card-footer">
+          <span class="cat-tag" style="background:${cat.dot}22;color:${cat.text}">${cat.label}</span>
+          ${dueTag(card.due)}
+        </div>
+      `;
+      el.addEventListener('click',()=>openEdit(card.id));
+      el.addEventListener('dragstart',()=>{dragging=card.id;setTimeout(()=>el.classList.add('dragging'),0);showDZ(col.id);});
+      el.addEventListener('dragend',()=>{el.classList.remove('dragging');dragging=null;hideDZ();});
+      cardsEl.appendChild(el);
+    });
+    const dz=div.querySelector(`#dz-${col.id}`);
+    dz.addEventListener('dragover',e=>{e.preventDefault();dz.style.background='#DBEAFE'});
+    dz.addEventListener('dragleave',()=>dz.style.background='');
+    dz.addEventListener('drop',e=>{e.preventDefault();dz.style.background='';if(dragging!=null){const c=cards.find(x=>x.id===dragging);if(c){c.col=col.id;save();renderBoard();if(radarVisible)renderRadar();}}});
+  });
+  updateDueBanner();
+}
+
+function showDZ(f){COLS.forEach(c=>{if(c.id!==f){const d=document.getElementById('dz-'+c.id);if(d)d.classList.add('active');}});}
+function hideDZ(){COLS.forEach(c=>{const d=document.getElementById('dz-'+c.id);if(d){d.classList.remove('active');d.style.background='';}});}
+
+window.openEdit=function(id){
+  editingId=id;addingCol=null;const c=cards.find(x=>x.id===id);
+  buildCatSelect();
+  document.getElementById('modal-title').textContent=c.name;
+  document.getElementById('f-name').value=c.name;
+  document.getElementById('f-cat').value=c.cat;
+  document.getElementById('f-priority').value=c.priority||'none';
+  document.getElementById('f-due').value=c.due||'';
+  document.getElementById('f-notes').value=c.notes||'';
+  document.getElementById('delete-btn').style.display='';
+  document.getElementById('overlay').classList.add('open');
+};
+window.openAdd=function(colId){
+  editingId=null;addingCol=colId;
+  buildCatSelect();
+  document.getElementById('modal-title').textContent='New task';
+  ['f-name','f-due','f-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-priority').value='none';
+  document.getElementById('delete-btn').style.display='none';
+  document.getElementById('overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('f-name').focus(),50);
+};
+window.closeModal=()=>{document.getElementById('overlay').classList.remove('open');editingId=null;addingCol=null;};
+window.saveCard=()=>{
+  const name=document.getElementById('f-name').value.trim();if(!name)return;
+  const data={name,cat:document.getElementById('f-cat').value,priority:document.getElementById('f-priority').value,due:document.getElementById('f-due').value,notes:document.getElementById('f-notes').value.trim()};
+  if(editingId!=null)Object.assign(cards.find(x=>x.id===editingId),data);
+  else if(addingCol)cards.push({id:nextId++,col:addingCol,...data});
+  save();closeModal();renderBoard();if(radarVisible)renderRadar();
+};
+window.deleteCard=()=>{if(editingId==null)return;cards=cards.filter(x=>x.id!==editingId);save();closeModal();renderBoard();if(radarVisible)renderRadar();};
+
+document.getElementById('overlay').addEventListener('click',e=>{if(e.target===document.getElementById('overlay'))closeModal();});
+document.getElementById('focus-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('focus-overlay'))closeFocus();});
+document.getElementById('settings-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('settings-overlay'))closeSettings();});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeModal();closeFocus();closeSettings();}
+  if(e.key==='Enter'&&document.getElementById('overlay').classList.contains('open')&&e.target.tagName!=='TEXTAREA')saveCard();
+});
+
+// ── PWA install ───────────────────────────────────────
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();deferredPrompt=e;
+  document.getElementById('install-banner').classList.add('show');
+});
+document.getElementById('install-btn').addEventListener('click',async()=>{
+  if(!deferredPrompt)return;
+  deferredPrompt.prompt();await deferredPrompt.userChoice;
+  deferredPrompt=null;
+  document.getElementById('install-banner').classList.remove('show');
+});
+
+// ── Boot ──────────────────────────────────────────────
+const hasLocal=loadLocal();
+if(hasLocal&&boardName&&categories.length){
+  // Returning user — go straight to board
+  document.getElementById('main-board').style.display='';
+  applyAccent();
+  renderBoard();
+  initFirebase();
+} else {
+  // First time — show setup
+  renderSwatches('color-swatches','#2563EB',c=>{
+    accentColor=c;
+    renderSwatches('color-swatches',accentColor,c2=>{accentColor=c2;renderSwatches('color-swatches',accentColor,()=>{});});
+  });
+  // Seed with a few default categories to make it easy
+  setupCats=[
+    makeCat('c1','Work','#2563EB'),
+    makeCat('c2','Personal','#7C3AED'),
+    makeCat('c3','Health','#16A34A'),
+  ];
+  renderSetupCats();
+  document.getElementById('setup-screen').classList.add('open');
+}
+</script>
+</body>
+</html>
