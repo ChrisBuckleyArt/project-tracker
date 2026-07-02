@@ -443,7 +443,7 @@ function initFirebase(){
     const app=initializeApp(firebaseConfig);
     db=getDatabase(app);
     // Use board name slug as the key so different boards don't collide
-    const slug=boardName.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-');
+    const slug=window._forcedSlug||boardName.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-');
     dbRef=ref(db,`project-tracker/${slug}`);
     setSyncStatus('loading','Connecting…','');
     onValue(dbRef,(snapshot)=>{
@@ -454,9 +454,14 @@ function initFirebase(){
         boardName=data.boardName||boardName;
         accentColor=data.accentColor||accentColor;
         categories=data.categories||categories;
+        // Save locally so this device remembers next time
+        saveLocal();
         applyAccent();
         renderBoard();
-        setSyncStatus('ok','Synced across all devices ✓','Changes update instantly everywhere');
+        // Build the shareable URL with board slug
+        const shareSlug=window._forcedSlug||boardName.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-');
+        const shareURL=`${location.origin}${location.pathname}?board=${shareSlug}`;
+        setSyncStatus('ok','Synced across all devices ✓',`Open on any device: ${shareURL}`);
       } else {
         pushToFirebase();
       }
@@ -688,20 +693,34 @@ document.getElementById('install-btn').addEventListener('click',async()=>{
 });
 
 // ── Boot ──────────────────────────────────────────────
+// Check if URL contains a board slug (e.g. ?board=christias-wip)
+// This is how new devices know which board to load without setup
+const urlParams=new URLSearchParams(window.location.search);
+const urlBoardSlug=urlParams.get('board');
+
 const hasLocal=loadLocal();
-if(hasLocal&&boardName&&categories.length){
-  // Returning user — go straight to board
+
+if(urlBoardSlug){
+  // A board slug was passed in the URL — load that board from Firebase directly
+  document.getElementById('main-board').style.display='';
+  setSyncStatus('loading','Loading your board…','');
+  // We'll let Firebase populate everything — show board shell while loading
+  renderBoard();
+  // Override the slug used in initFirebase
+  window._forcedSlug=urlBoardSlug;
+  initFirebase();
+} else if(hasLocal&&boardName&&categories.length){
+  // Returning user on same device — go straight to board
   document.getElementById('main-board').style.display='';
   applyAccent();
   renderBoard();
   initFirebase();
 } else {
-  // First time — show setup
+  // First time on this device and no URL slug — show setup
   renderSwatches('color-swatches','#2563EB',c=>{
     accentColor=c;
     renderSwatches('color-swatches',accentColor,c2=>{accentColor=c2;renderSwatches('color-swatches',accentColor,()=>{});});
   });
-  // Seed with a few default categories to make it easy
   setupCats=[
     makeCat('c1','Work','#2563EB'),
     makeCat('c2','Personal','#7C3AED'),
