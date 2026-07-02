@@ -696,17 +696,15 @@ document.getElementById('install-btn').addEventListener('click',async()=>{
 // Check if URL contains a board slug (e.g. ?board=christias-wip)
 // This is how new devices know which board to load without setup
 const urlParams=new URLSearchParams(window.location.search);
-const urlBoardSlug=urlParams.get('board');
+const urlBoardSlug=urlParams.get('board')||'christias-wip';
 
 const hasLocal=loadLocal();
 
 if(urlBoardSlug){
-  // A board slug was passed in the URL — load that board from Firebase directly
+  // Always try to load from Firebase using the slug
   document.getElementById('main-board').style.display='';
   setSyncStatus('loading','Loading your board…','');
-  // We'll let Firebase populate everything — show board shell while loading
   renderBoard();
-  // Override the slug used in initFirebase
   window._forcedSlug=urlBoardSlug;
   initFirebase();
 } else if(hasLocal&&boardName&&categories.length){
