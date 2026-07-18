@@ -626,6 +626,7 @@ function renderBoard(){
       el.addEventListener('click',()=>openEdit(card.id));
       el.addEventListener('dragstart',()=>{dragging=card.id;setTimeout(()=>el.classList.add('dragging'),0);showDZ(col.id);});
       el.addEventListener('dragend',()=>{el.classList.remove('dragging');dragging=null;hideDZ();});
+      addTouchDrag(el, card.id, col.id);
       cardsEl.appendChild(el);
     });
     const dz=div.querySelector(`#dz-${col.id}`);
@@ -691,6 +692,51 @@ document.getElementById('install-btn').addEventListener('click',async()=>{
   deferredPrompt=null;
   document.getElementById('install-banner').classList.remove('show');
 });
+
+// ── Touch drag support for mobile ────────────────────
+function addTouchDrag(el, cardId, colId){
+  let touchStartX,touchStartY,clone;
+  el.addEventListener('touchstart',e=>{
+    if(e.target.tagName==='BUTTON'||e.target.tagName==='SELECT')return;
+    const touch=e.touches[0];
+    touchStartX=touch.clientX;touchStartY=touch.clientY;
+    const rect=el.getBoundingClientRect();
+    clone=el.cloneNode(true);
+    clone.style.cssText=`position:fixed;width:${rect.width}px;opacity:0.85;pointer-events:none;z-index:9999;left:${rect.left}px;top:${rect.top}px;transform:rotate(2deg) scale(1.04);border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,0.18);`;
+    document.body.appendChild(clone);
+    el.style.opacity='0.3';
+    dragging=cardId;
+    showDZ(colId);
+  },{passive:true});
+  el.addEventListener('touchmove',e=>{
+    if(!clone)return;
+    e.preventDefault();
+    const touch=e.touches[0];
+    const dx=touch.clientX-touchStartX;
+    const dy=touch.clientY-touchStartY;
+    const rect=el.getBoundingClientRect();
+    clone.style.left=(rect.left+dx)+'px';
+    clone.style.top=(rect.top+dy)+'px';
+    clone.style.display='none';
+    const under=document.elementFromPoint(touch.clientX,touch.clientY);
+    clone.style.display='';
+    document.querySelectorAll('.drop-zone').forEach(dz=>dz.style.background='');
+    if(under){const dz=under.closest('.drop-zone')||under.closest('.col')?.querySelector('.drop-zone');if(dz)dz.style.background='#EDE9FE';}
+  },{passive:false});
+  el.addEventListener('touchend',e=>{
+    if(!clone)return;
+    const touch=e.changedTouches[0];
+    clone.remove();clone=null;
+    el.style.opacity='';
+    const under=document.elementFromPoint(touch.clientX,touch.clientY);
+    if(under){
+      const col=under.closest('.col')||under.closest('.drop-zone')?.closest('.col');
+      if(col&&col.dataset.col){const c=cards.find(x=>x.id===dragging);if(c&&c.col!==col.dataset.col){c.col=col.dataset.col;save();render();if(radarVisible)renderRadar();}}
+    }
+    dragging=null;hideDZ();
+    document.querySelectorAll('.drop-zone').forEach(dz=>dz.style.background='');
+  },{passive:true});
+}
 
 // ── Boot ──────────────────────────────────────────────
 // Check if URL contains a board slug (e.g. ?board=christias-wip)
