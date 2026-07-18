@@ -101,8 +101,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .card-footer{display:flex;align-items:center;gap:5px;margin-top:5px;flex-wrap:wrap}
 .cat-tag{font-size:9px;padding:2px 5px;border-radius:99px;font-weight:500}
 .due-tag{display:inline-flex;align-items:center;gap:2px;font-size:9px;padding:2px 5px;border-radius:99px;font-weight:500}
-.drop-zone{border:1.5px dashed #bbb;border-radius:8px;height:36px;display:none;align-items:center;justify-content:center;font-size:10px;color:#aaa;margin-top:3px}
-.drop-zone.active{display:flex}
+.drop-zone{border:2px dashed #bbb;border-radius:8px;height:36px;display:none;align-items:center;justify-content:center;font-size:10px;color:#aaa;margin-top:3px;transition:all .15s}
+.drop-zone.active{display:flex;height:64px;font-size:13px;color:#2563EB;border-color:#2563EB;background:#DBEAFE}
+.col.drag-over{background:#EFF6FF;border:1.5px solid #2563EB}
 .add-btn{width:100%;margin-top:6px;font-size:11px;padding:5px 0;background:none;border:0.5px dashed #bbb;border-radius:8px;color:#888;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:3px}
 .add-btn:hover{background:#fff}
 
@@ -595,7 +596,7 @@ function renderBoard(){
   const colsEl=document.getElementById('columns');colsEl.innerHTML='';
   COLS.forEach(col=>{
     const colCards=cards.filter(c=>c.col===col.id);
-    const div=document.createElement('div');div.className='col';
+    const div=document.createElement('div');div.className='col';div.dataset.col=col.id;
     div.innerHTML=`
       <div class="col-header">
         <i class="ti ${col.icon} col-icon" style="color:${col.color}"></i>
@@ -695,16 +696,16 @@ document.getElementById('install-btn').addEventListener('click',async()=>{
 
 // ── Touch drag support for mobile ────────────────────
 function addTouchDrag(el, cardId, colId){
-  let touchStartX,touchStartY,clone;
+  let touchStartX,touchStartY,clone,lastHighlit;
   el.addEventListener('touchstart',e=>{
-    if(e.target.tagName==='BUTTON'||e.target.tagName==='SELECT')return;
+    if(e.target.tagName==='BUTTON'||e.target.tagName==='SELECT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT')return;
     const touch=e.touches[0];
     touchStartX=touch.clientX;touchStartY=touch.clientY;
     const rect=el.getBoundingClientRect();
     clone=el.cloneNode(true);
-    clone.style.cssText=`position:fixed;width:${rect.width}px;opacity:0.85;pointer-events:none;z-index:9999;left:${rect.left}px;top:${rect.top}px;transform:rotate(2deg) scale(1.04);border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,0.18);`;
+    clone.style.cssText=`position:fixed;width:${rect.width}px;opacity:0.88;pointer-events:none;z-index:9999;left:${rect.left}px;top:${rect.top}px;transform:rotate(2deg) scale(1.05);border-radius:9px;box-shadow:0 8px 28px rgba(0,0,0,0.22);transition:none;`;
     document.body.appendChild(clone);
-    el.style.opacity='0.3';
+    el.style.opacity='0.25';
     dragging=cardId;
     showDZ(colId);
   },{passive:true});
@@ -720,21 +721,28 @@ function addTouchDrag(el, cardId, colId){
     clone.style.display='none';
     const under=document.elementFromPoint(touch.clientX,touch.clientY);
     clone.style.display='';
-    document.querySelectorAll('.drop-zone').forEach(dz=>dz.style.background='');
-    if(under){const dz=under.closest('.drop-zone')||under.closest('.col')?.querySelector('.drop-zone');if(dz)dz.style.background='#EDE9FE';}
+    if(lastHighlit){lastHighlit.classList.remove('drag-over');lastHighlit=null;}
+    if(under){
+      const col=under.closest('.col');
+      if(col&&col.dataset.col&&col.dataset.col!==colId){col.classList.add('drag-over');lastHighlit=col;}
+    }
   },{passive:false});
   el.addEventListener('touchend',e=>{
     if(!clone)return;
     const touch=e.changedTouches[0];
     clone.remove();clone=null;
     el.style.opacity='';
+    if(lastHighlit){lastHighlit.classList.remove('drag-over');lastHighlit=null;}
+    document.querySelectorAll('.col').forEach(c=>c.classList.remove('drag-over'));
     const under=document.elementFromPoint(touch.clientX,touch.clientY);
     if(under){
-      const col=under.closest('.col')||under.closest('.drop-zone')?.closest('.col');
-      if(col&&col.dataset.col){const c=cards.find(x=>x.id===dragging);if(c&&c.col!==col.dataset.col){c.col=col.dataset.col;save();render();if(radarVisible)renderRadar();}}
+      const col=under.closest('.col');
+      if(col&&col.dataset.col){
+        const c=cards.find(x=>x.id===dragging);
+        if(c&&c.col!==col.dataset.col){c.col=col.dataset.col;save();renderBoard();if(radarVisible)renderRadar();}
+      }
     }
     dragging=null;hideDZ();
-    document.querySelectorAll('.drop-zone').forEach(dz=>dz.style.background='');
   },{passive:true});
 }
 
